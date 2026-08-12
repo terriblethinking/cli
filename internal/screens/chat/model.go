@@ -1,15 +1,36 @@
 package chat
 
 import (
+	"strings"
+
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	bifrost "github.com/maximhq/bifrost/core"
+	"github.com/maximhq/bifrost/core/schemas"
+	"github.com/terriblethinking/engine/agent"
 )
 
 type errMsg error
 
+type Turn struct {
+	Role    string
+	Content string
+}
+
 type Model struct {
 	textarea textarea.Model
+
+	agent *agent.Agent
+
+	streamCh <-chan any
+
+	turns []Turn
+
+	incomingThinking *strings.Builder
+	incomingText     *strings.Builder
+
+	state string
 
 	height int
 	width  int
@@ -17,17 +38,16 @@ type Model struct {
 	err error
 }
 
-func New() Model {
+func New(client bifrost.Bifrost) Model {
+
+	//  NOTE: TEXTAREA SETUP
+
 	ta := textarea.New()
 
 	ta.ShowLineNumbers = false
 	ta.DynamicHeight = true
-	ta.MinHeight = 1
-	ta.MaxHeight = 4
-
-	// Set the default textarea styles; adding true
-	// will make it be the dark theme alternative.
-	ta.SetStyles(textarea.DefaultStyles(true))
+	ta.MinHeight = 3
+	ta.MaxHeight = 10
 
 	// TODO doesn't yet work. Want to add a pretty round
 	// border around it. Also would probably be nice to
@@ -70,9 +90,27 @@ func New() Model {
 	// Set the focus onto the textarea.
 	ta.Focus()
 
+	// Set the default textarea styles; adding true
+	// will make it be the dark theme variant.
+
+	ta.SetStyles(textarea.DefaultStyles(true))
+
+	//  NOTE: AGENT SETUP
+
+	agent01 := agent.Agent{
+		Client:   client,
+		Provider: "ollama",
+		Model:    "ornith:9B",
+		Messages: []schemas.ChatMessage{},
+	}
+
 	return Model{
-		textarea: ta,
-		err:      nil,
+		textarea:         ta,
+		err:              nil,
+		agent:            &agent01,
+		incomingThinking: &strings.Builder{},
+		incomingText:     &strings.Builder{},
+		state:            "idle",
 	}
 }
 

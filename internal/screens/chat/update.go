@@ -3,6 +3,7 @@ package chat
 import (
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"github.com/terriblethinking/engine/agent"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -21,11 +22,95 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update styling now that we know the background color.
 		m.textarea.SetStyles(textarea.DefaultStyles(msg.IsDark()))
 
+	case agent.AsyncAgentReasongingChunk:
+
+		if m.incomingText.String() != "" {
+
+			m.turns = append(m.turns, Turn{
+				Role:    "model",
+				Content: m.incomingText.String(),
+			})
+
+			m.incomingText.Reset()
+		}
+
+		m.incomingThinking.WriteString(msg.Content)
+
+		return m, recieveChunk(m.streamCh)
+
+	case agent.AsyncAgentTextChunk:
+
+		if m.incomingThinking.String() != "" {
+
+			m.turns = append(m.turns, Turn{
+				Role:    "model",
+				Content: m.incomingThinking.String(),
+			})
+
+			m.incomingThinking.Reset()
+		}
+
+		m.incomingText.WriteString(msg.Content)
+
+		return m, recieveChunk(m.streamCh)
+
+	case StreamDoneMsg:
+
+		if m.incomingThinking.String() != "" {
+
+			m.turns = append(m.turns, Turn{
+				Role:    "model",
+				Content: m.incomingThinking.String(),
+			})
+
+			m.incomingThinking.Reset()
+		}
+
+		if m.incomingText.String() != "" {
+
+			m.turns = append(m.turns, Turn{
+				Role:    "model",
+				Content: m.incomingText.String(),
+			})
+
+			m.incomingText.Reset()
+		}
+
+		m.state = "idle"
+
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if m.textarea.Focused() {
 				m.textarea.Blur()
+			}
+		case "enter":
+			if m.state != "receiving" {
+				if m.textarea.Focused() {
+					m.state = "receiving"
+
+					// Get the current user prompt.
+
+					prompt := m.textarea.Value()
+
+					// Reset the value of the input to "".
+
+					m.textarea.SetValue("")
+
+					// Start the streaming stream and get the channel.
+
+					streamCh := m.agent.RunAsync(prompt)
+
+					// Save the channel inside the model so that we
+					// can access it later on.
+
+					m.streamCh = streamCh
+
+					// Return recieveChunk that will continue to propagate
+					// everything that it recieves from the stream channel.
+
+					return m, recieveChunk(streamCh)
+				}
 			}
 		case "ctrl+c":
 			return m, tea.Quit

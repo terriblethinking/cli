@@ -1,13 +1,15 @@
 package app
 
 import (
+	"github.com/terriblethinking/cli/internal/screens/chat"
+
 	tea "charm.land/bubbletea/v2"
-	"cli/internal/screens/chat"
+	bifrost "github.com/maximhq/bifrost/core"
 )
 
-func New() Model {
+func New(client bifrost.Bifrost) Model {
 	return Model{
-		chat: chat.New(),
+		chat: chat.New(client),
 	}
 }
 
