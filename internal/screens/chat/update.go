@@ -1,6 +1,8 @@
 package chat
 
 import (
+	"fmt"
+
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 	"github.com/terriblethinking/engine/agent"
@@ -24,10 +26,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case agent.AsyncAgentReasongingChunk:
 
+		if m.state != "receiving" {
+			m.state = "receiving"
+		}
+
 		if m.incomingText.String() != "" {
 
 			m.turns = append(m.turns, Turn{
-				Role:    "model",
+				Role:    "model-text",
 				Content: m.incomingText.String(),
 			})
 
@@ -40,10 +46,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case agent.AsyncAgentTextChunk:
 
+		if m.state != "receiving" {
+			m.state = "receiving"
+		}
+
 		if m.incomingThinking.String() != "" {
 
 			m.turns = append(m.turns, Turn{
-				Role:    "model",
+				Role:    "model-thinking",
 				Content: m.incomingThinking.String(),
 			})
 
@@ -59,7 +69,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.incomingThinking.String() != "" {
 
 			m.turns = append(m.turns, Turn{
-				Role:    "model",
+				Role:    "model-thinking",
 				Content: m.incomingThinking.String(),
 			})
 
@@ -69,7 +79,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.incomingText.String() != "" {
 
 			m.turns = append(m.turns, Turn{
-				Role:    "model",
+				Role:    "model-text",
 				Content: m.incomingText.String(),
 			})
 
@@ -85,17 +95,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.Blur()
 			}
 		case "enter":
-			if m.state != "receiving" {
+			if m.state != "receiving" && m.state != "loading" {
 				if m.textarea.Focused() {
-					m.state = "receiving"
+					m.state = "loading"
 
 					// Get the current user prompt.
 
 					prompt := m.textarea.Value()
 
+					// Add the user prompt to the turn slice
+
+					m.turns = append(m.turns, Turn{
+						Role:    "person",
+						Content: prompt,
+					})
+
 					// Reset the value of the input to "".
 
 					m.textarea.SetValue("")
+
+					// Get the agent readable messages we feed the agent.
+
+					messages := m.GetAgentReadableMessages()
+
+					fmt.Print(len(messages))
+
+					// Set them inside the agent
+
+					m.agent.Messages = messages
 
 					// Start the streaming stream and get the channel.
 
