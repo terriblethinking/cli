@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	bifrost "github.com/maximhq/bifrost/core"
 	"github.com/maximhq/bifrost/core/schemas"
+	"github.com/terriblethinking/cli/internal/components/viewport"
 	"github.com/terriblethinking/engine/agent"
 )
 
@@ -17,6 +18,13 @@ type Turn struct {
 	Role    string
 	Content string
 }
+
+type Focused int
+
+const (
+	Chat Focused = iota + 1
+	Textarea
+)
 
 type Model struct {
 	textarea textarea.Model
@@ -29,6 +37,8 @@ type Model struct {
 
 	incomingThinking *strings.Builder
 	incomingText     *strings.Builder
+
+	chatViewport viewport.Model
 
 	state string
 
@@ -95,6 +105,10 @@ func New(client bifrost.Bifrost) Model {
 
 	ta.SetStyles(textarea.DefaultStyles(true))
 
+	//  NOTE: CHAT VIEWPORT SETUP
+
+	chatViewport := viewport.New()
+
 	//  NOTE: AGENT SETUP
 
 	agent01 := agent.Agent{
@@ -108,6 +122,7 @@ func New(client bifrost.Bifrost) Model {
 		textarea:         ta,
 		err:              nil,
 		agent:            &agent01,
+		chatViewport:     chatViewport,
 		incomingThinking: &strings.Builder{},
 		incomingText:     &strings.Builder{},
 		state:            "idle",

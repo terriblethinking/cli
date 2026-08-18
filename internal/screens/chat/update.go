@@ -20,6 +20,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.textarea.SetWidth(msg.Width)
 
+		m.chatViewport.SetWidth(msg.Width)
+		m.chatViewport.SetHeight(msg.Height - m.textarea.Height())
+
 	case tea.BackgroundColorMsg:
 		// Update styling now that we know the background color.
 		m.textarea.SetStyles(textarea.DefaultStyles(msg.IsDark()))
